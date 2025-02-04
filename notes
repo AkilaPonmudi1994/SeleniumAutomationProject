@@ -1,0 +1,36 @@
+x = 4 (storing a value to x)
+x == 5 (comparing x with 5 whether both are equal or not)
+
+To get no.of keywords available in python:
+
+import keyword
+print(keyword.kwlist)
+print(len(keyword.kwlist))
+
+'hello world'
+'hello world'
+'hello world'
+'hello world'
+'hello world''hello world'
+'hello world'
+'hello world'
+'hello world'
+
+ num_words += len(words)
+
+
+ group of individual objects in a single entity
+ list()
+ set{}
+ tuple[]
+
+ empty curly  brases treated as dictionay data type
+ eg: d = {}
+
+
+
+
+ doubts,
+ 1)defined variable inside constructor method, will it be treated as a global variable?
+ 2)possible to have one or more constructor method for a class
+ 3)
