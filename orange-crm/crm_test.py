@@ -1,4 +1,6 @@
 import time
+import pytest
+import  unittest
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -6,67 +8,99 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 
-class OrangeHRMTest:
+class TestOrangeHRM:
     # Constants
     BASE_URL = "https://opensource-demo.orangehrmlive.com/"
     DEFAULT_USERNAME = "Admin"
     DEFAULT_PASSWORD = "admin123"
 
-    def __init__(self):
-        self.driver = self._setup_driver()
-        self.wait = WebDriverWait(self.driver, 10)
 
-    def _setup_driver(self):
-        """Initialize and configure the Chrome driver"""
+    @pytest.fixture(scope="class", autouse=True)
+    def setup_class(self, request):
+        print('*********setting up******')
         options = webdriver.ChromeOptions()
         options.add_experimental_option("detach", True)
         driver = webdriver.Chrome(options=options)
-        driver.get(self.BASE_URL)
+        cls = request.cls
+        driver.get(cls.BASE_URL)
         driver.maximize_window()
         driver.implicitly_wait(3)
-        return driver
+        cls.driver = driver
+        cls.wait = WebDriverWait(cls.driver, 10)
+        yield
+        # teardown
+        print('*****teardown*****')
+        cls.driver.quit()
 
-    def login(self, username, password):
-        """Login to the application"""
-        self.driver.find_element(By.NAME, "username").send_keys(username)
-        self.driver.find_element(By.NAME, "password").send_keys(password)
+
+    def test_login(self):
+        """Login to the application
+        """
+        self.driver.find_element(By.NAME, "username").send_keys(self.DEFAULT_USERNAME)
+        self.driver.find_element(By.NAME, "password").send_keys(self.DEFAULT_PASSWORD)
         self.driver.find_element(By.XPATH, "//button[@type='submit']").click()
         time.sleep(2)
+        assert self.driver.title=="OrangeHRM"
 
-    def search_by_employee_name(self, employee_name):
+    def test_search_by_employee_name(self,):
         """Search for an employee by name"""
-        search_input = self.driver.find_element(
-            By.XPATH, "//input[@placeholder='Type for hints...']"
-        )
-        search_input.send_keys(employee_name)
-        print(f"Searching for employee: {employee_name}")
 
-        dropdown = self.wait.until(
-            EC.presence_of_element_located(
-                (By.XPATH, "//div[contains(@class, 'oxd-autocomplete-option')]")
+        table_data = self.read_table_data()
+        employee_names = []
+        for data in table_data:
+            emp_name =data.get('employee_name')
+            employee_names.append(emp_name)
+
+        for employee_name in employee_names:
+
+            search_input = self.driver.find_element(
+                By.XPATH, "//input[@placeholder='Type for hints...']"
             )
-        )
-        dropdown.click()
+            search_input.send_keys(employee_name)
+            print(f"Searching for employee: {employee_name}")
 
-        self.driver.find_element(By.XPATH, "//button[@type='submit']").click()
-        print(f"Search completed for employee: {employee_name}")
-        time.sleep(5)
+            dropdown = self.wait.until(
+                EC.presence_of_element_located(
+                    (By.XPATH, "//div[contains(@class, 'oxd-autocomplete-option')]")
+                )
+            )
+            dropdown.click()
 
-    def search_by_username(self, username):
+            self.driver.find_element(By.XPATH, "//button[@type='submit']").click()
+            print(f"Search completed for employee: {employee_name}")
+            time.sleep(5)
+            results = self.driver.find_elements(By.XPATH, "//div[@class='oxd-table-body']/div")
+            assert len(results) > 0
+            read_latest_table_data = self.read_table_data()
+            new_emp_name = read_latest_table_data[0].get('employee_name')
+            assert self.compare_search_results(
+                employee_name, new_emp_name
+            )
+
+    def test_search_by_username(self, ):
         """Search for a user by username"""
-        search_input = self.driver.find_element(
-            By.XPATH,
-            "//label[text()='Username']/following::input[@class='oxd-input oxd-input--active']",
-        )
-        search_input.send_keys(username)
-        self.driver.implicitly_wait(3)
+        user_names = []
+        table_data = self.read_table_data()
+        for data in table_data:
+            user_name = data.get('username')
+            user_names.append(user_name)
 
-        self.driver.find_element(By.XPATH, "//button[@type='submit']").click()
-        print("Search completed for username")
-        time.sleep(5)
+        for user_name in user_names:
+            search_input = self.driver.find_element(
+                By.XPATH,
+                "//label[text()='Username']/following::input[@class='oxd-input oxd-input--active']",
+            )
+            search_input.send_keys(user_name)
+            self.driver.implicitly_wait(3)
+
+            self.driver.find_element(By.XPATH, "//button[@type='submit']").click()
+            print("Search completed for username")
+            time.sleep(5)
+            results = self.driver.find_elements(By.XPATH, "//div[@class='oxd-table-body']/div")
+            assert len(results) > 0
 
     def read_table_data(self):
-        """Read data from the admin table"""
+        """Helper function to read data from the admin table"""
         self.driver.find_element(By.LINK_TEXT, "Admin").click()
         table_data = []
         print('Read first two results')
@@ -106,51 +140,4 @@ class OrangeHRMTest:
         print(f"Search results mismatch: {before_name} vs {after_name}")
         return False
 
-    def run_employee_search_tests(self):
-        """Run employee search tests"""
-        initial_data = self.read_table_data()
-        print(initial_data)
 
-        for employee in initial_data:
-            employee_name = employee.get("employee_name")
-            self.search_by_employee_name(employee_name)
-
-            search_results = self.read_table_data()
-            result_name = search_results[0].get("employee_name")
-
-            if self.compare_search_results(employee_name, result_name):
-                print(f"{employee_name} search test passed")
-
-    def run_username_search_tests(self):
-        """Run username search tests"""
-        initial_data = self.read_table_data()
-        print(initial_data)
-
-        for user in initial_data:
-            username = user.get("username")
-            self.search_by_username(username)
-
-            search_results = self.read_table_data()
-            result_username = search_results[0].get("username")
-
-            if self.compare_search_results(username, result_username):
-                print(f"{username} search test passed")
-
-    def cleanup(self):
-        """Clean up resources"""
-        self.driver.quit()
-
-
-def main():
-    test = OrangeHRMTest()
-    try:
-        test.login(test.DEFAULT_USERNAME, test.DEFAULT_PASSWORD)
-        test.run_employee_search_tests()
-        time.sleep(5)
-        test.run_username_search_tests()
-    finally:
-        test.cleanup()
-
-
-if __name__ == "__main__":
-    main()
