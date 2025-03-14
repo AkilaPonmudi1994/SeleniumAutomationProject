@@ -20,10 +20,10 @@ Before running this project, you need to have:
 2. Navigate to the project folder
 3. Run the script:
    
-   python crm_test.py
+   pytest
    
 
-## What the Script Does 
+## What it does?
 
 1. Opens Chrome browser
 2. Goes to OrangeHRM demo website
@@ -32,9 +32,3 @@ Before running this project, you need to have:
 5. Tests username search
 6. Closes the browser when done
 
-## Test Results 
-
-The script will print:
-- What it's searching for
-- When it finds something
-- Whether the tests passed or failed
